@@ -6,6 +6,7 @@ An interactive geography study app: a 3D globe, a profile for all 250 countries 
 
 Double-click `start.bat` (needs Python). It serves the folder at http://localhost:8765 and opens your browser.
 Opening `index.html` directly from disk will not work, because browsers block loading the data files that way.
+The local server (`tools/serve.py`) tells the browser to check for updated files on every load, so you never run stale code. When hosting elsewhere, bump the `?v=` tag on the script and stylesheet links in `index.html` after changing them.
 
 ## What's inside
 
