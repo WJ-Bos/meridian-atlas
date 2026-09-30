@@ -148,13 +148,11 @@ img { max-width: 100%; }
 .layer[aria-pressed="true"]::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--card); }
 
 /* measuring tool */
-.tool-btn {
-  display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 500;
-  background: var(--card); color: var(--ink); border: 1px solid var(--rule); box-shadow: 0 6px 18px var(--shadow);
-}
-.tool-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
-.tool-btn:hover { border-color: var(--ink-3); }
-.tool-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* measuring tool: the last row of the layer list, a ruler instead of a checkbox */
+.layer.tool { border-top: 1px solid var(--rule); }
+.layer.tool::before { display: none; }
+.layer.tool svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; flex: none; }
+.layer.tool[aria-pressed="true"] { background: var(--accent-wash); color: var(--accent); }
 .measure-card {
   position: absolute; z-index: 12; left: calc(var(--panel) + var(--gap) * 2); top: var(--gap); width: min(360px, calc(100% - var(--panel) - 280px));
   min-width: 260px; padding: 14px 16px; border-radius: 12px; background: var(--card); border: 1px solid var(--rule); box-shadow: 0 16px 40px var(--shadow);
@@ -501,8 +499,10 @@ table.atlas .cname { display: flex; gap: 10px; align-items: center; font-weight:
   .map-controls { top: 10px; right: 10px; }
   .lens { min-width: 0; padding: 6px 10px; }
   .lens span { display: none; }
-  .layer-group { display: none; }
-  .tool-btn { padding: 7px 10px; font-size: 12.5px; }
+  /* phones keep only the Measure row */
+  .layer-group { min-width: 0; }
+  .layer:not(.tool) { display: none; }
+  .layer.tool { border-top: 0; padding: 6px 10px; }
   .measure-card { left: 12px; right: 12px; width: auto; min-width: 0; top: 56px; }
   .legend, .readout { display: none; }
   .banner { left: 50%; top: 56px; font-size: 18px; }
