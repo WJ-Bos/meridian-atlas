@@ -33,6 +33,7 @@
     if (prev === 'practice' && v !== 'practice') GA.practice.leave();
     if (prev === 'course' && v !== 'course') GA.course.leave();
     if (prev === 'explore' && v !== 'explore') GA.dossier.stopQuiz();
+    GA.measure.stop();
     GA.$$('.nav-link').forEach(a => a.dataset.view === v ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
     const sheet = GA.$('#sheet');
     sheet.hidden = !(v === 'index' || v === 'progress');
@@ -138,6 +139,8 @@
     const tog = (id, fn) => { const b = GA.$(id); b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(on)); fn(on); }; };
     tog('#toggleSatellite', on => GA.globe.setSatellite(on));
     tog('#toggleNames', on => GA.globe.setNames(on));
+    tog('#toggleNight', on => { if (!GA.globe.setDayNight(on)) GA.$('#toggleNight').setAttribute('aria-pressed', 'false'); });
+    GA.$('#measureBtn').onclick = () => GA.measure.toggle();
     initTheme();
     tog('#togglePlates', on => app.setPlates(on));
     tog('#toggleCapitals', on => GA.globe.setCapitals(on));

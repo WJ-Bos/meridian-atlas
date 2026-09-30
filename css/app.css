@@ -147,6 +147,29 @@ img { max-width: 100%; }
 .layer[aria-pressed="true"] { color: var(--ink); }
 .layer[aria-pressed="true"]::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--card); }
 
+/* measuring tool */
+.tool-btn {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 500;
+  background: var(--card); color: var(--ink); border: 1px solid var(--rule); box-shadow: 0 6px 18px var(--shadow);
+}
+.tool-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.tool-btn:hover { border-color: var(--ink-3); }
+.tool-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.measure-card {
+  position: absolute; z-index: 12; left: calc(var(--panel) + var(--gap) * 2); top: var(--gap); width: min(360px, calc(100% - var(--panel) - 280px));
+  min-width: 260px; padding: 14px 16px; border-radius: 12px; background: var(--card); border: 1px solid var(--rule); box-shadow: 0 16px 40px var(--shadow);
+}
+.stage.panel-closed .measure-card { left: var(--gap); }
+.mc-title { font: 800 20px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; margin: 0 0 4px; }
+.mc-route { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+.mc-route span { color: var(--ink-3); margin: 0 4px; }
+.mc-big { font: 900 48px/1 var(--display); margin: 4px 0 8px; color: var(--accent); }
+.mc-facts { display: grid; grid-template-columns: max-content 1fr; gap: 5px 14px; margin: 0 0 10px; font-size: 14px; }
+.mc-facts dt { color: var(--ink-3); }
+.mc-facts dd { margin: 0; font-weight: 500; }
+.mc-sub { font-size: 12.5px; color: var(--ink-3); margin: 0 0 10px; }
+.tip-time { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+
 /* ---------- legend, readout, banner ---------- */
 .legend {
   position: absolute; right: var(--gap); bottom: var(--gap); z-index: 5; max-width: min(460px, calc(100% - var(--panel) - 48px));
@@ -479,6 +502,8 @@ table.atlas .cname { display: flex; gap: 10px; align-items: center; font-weight:
   .lens { min-width: 0; padding: 6px 10px; }
   .lens span { display: none; }
   .layer-group { display: none; }
+  .tool-btn { padding: 7px 10px; font-size: 12.5px; }
+  .measure-card { left: 12px; right: 12px; width: auto; min-width: 0; top: 56px; }
   .legend, .readout { display: none; }
   .banner { left: 50%; top: 56px; font-size: 18px; }
   .sheet-inner { padding: 20px 16px 60px; }

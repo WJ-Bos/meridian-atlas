@@ -211,6 +211,7 @@ console.log('done:', countries.length, 'countries; overview', count('overview'),
 
 // Capital coordinates come from Wikidata in a second step.
 await import('./build-capitals.mjs');
+await import('./build-timezones.mjs');
 // Label points, flag compression, and a version stamp the app uses to invalidate its browser cache.
 await import('./build-labels.mjs');
 await import('./simplify-world.mjs');

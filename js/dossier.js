@@ -36,6 +36,14 @@
     return `<b>${pct >= 10 ? Math.round(pct) : pct.toFixed(1)}%</b> of ${what}`;
   }
 
+  // "21:05 in Tokyo (UTC+9)"; for countries spanning several zones, add the range
+  function localTime(c) {
+    const T = GA.time, off = T.offsetMin(c.tz), spans = T.spans(c);
+    let s = `<span class="num">${T.clock(c.tz)}</span> in ${esc(c.capital[0] || c.name)} <span class="rank">${T.offsetLabel(off)}</span>`;
+    if (spans.length > 1) s += `<br><span class="rank">Spans ${spans.length} time zones, ${T.offsetLabel(spans[0])} to ${T.offsetLabel(spans[spans.length - 1])}</span>`;
+    return s;
+  }
+
   // countries with states/provinces get an extra tab named after them ("States", "Provinces", ...)
   function tabsFor(id) {
     const a = D.adminIndex && D.adminIndex[id];
@@ -82,6 +90,7 @@
         ${c.demonym ? `<dt>People are</dt><dd>${esc(c.demonym)}</dd>` : ''}
         ${c.stats.gdp ? `<dt>Economy</dt><dd><span class="num">${GA.fmtUsd(c.stats.gdp.v)}</span> GDP ${rankTxt('gdp')}</dd>` : ''}
         <dt>Borders</dt><dd>${c.borders.length ? `<div class="chips">${c.borders.map(b => D.byId[b] ? `<button class="chip" data-go="${b}">${D.flagImg(b, 'flag flag-sm')}${esc(D.byId[b].name)}</button>` : '').join('')}</div>` : (c.landlocked ? 'None' : 'No land borders')}</dd>
+        ${c.tz ? `<dt>Local time</dt><dd>${localTime(c)}</dd>` : ''}
         <dt>Dialling code</dt><dd class="num">${esc(c.calling || '—')}</dd>
         <dt>Web domain</dt><dd>${esc(c.tld.join(', ') || '—')}</dd>
       </dl>
@@ -276,6 +285,7 @@
         ${r.cap ? `<dt>Capital</dt><dd>${esc(r.cap)}</dd>` : ''}
         <dt>Population</dt><dd><span class="num">${r.pop ? GA.fmtBig(r.pop) : '—'}</span> ${r.pop ? rank('pop') : ''}</dd>
         <dt>Area</dt><dd><span class="num">about ${GA.fmtInt(Math.round(r.area / 10) * 10)} km²</span> ${rank('area')}</dd>
+        ${(() => { const tz = GA.time.zoneAt(id, r.lab[0], r.lab[1]); return tz ? `<dt>Local time</dt><dd><span class="num">${GA.time.clock(tz)}</span> <span class="rank">${GA.time.offsetLabel(GA.time.offsetMin(tz))}</span></dd>` : ''; })()}
         ${r.pop && r.area ? `<dt>Density</dt><dd class="num">${GA.fmtInt(r.pop / r.area)} people per km²</dd>` : ''}
         ${areaShare ? `<dt>Share of ${cn}</dt><dd class="num">${pct(areaShare)} of the land${popShare && popShare <= 100 ? `, ${pct(popShare)} of the people` : ''}</dd>` : ''}
       </dl>

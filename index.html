@@ -65,9 +65,15 @@
         <button class="layer" id="toggleCapitals" aria-pressed="false">Capitals</button>
         <button class="layer" id="togglePlates" aria-pressed="false">Plates</button>
         <button class="layer" id="toggleSatellite" aria-pressed="false">Satellite</button>
+        <button class="layer" id="toggleNight" aria-pressed="false">Day &amp; night</button>
         <button class="layer" id="toggleSpin" aria-pressed="true">Rotate</button>
       </div>
+      <button class="tool-btn" id="measureBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>
+        Measure distance
+      </button>
     </div>
+    <div class="measure-card" id="measureCard" role="status" hidden></div>
 
     <div class="legend" id="legend" aria-live="polite"></div>
     <div class="readout" id="readout" aria-hidden="true"></div>
@@ -99,6 +105,7 @@
 <script src="js/data.js"></script>
 <script src="js/lessons.js"></script>
 <script src="js/globe.js"></script>
+<script src="js/tools.js"></script>
 <script src="js/dossier.js"></script>
 <script src="js/course.js"></script>
 <script src="js/practice.js"></script>

@@ -105,9 +105,13 @@
     const p = f.properties || f, c = D.byId[p.id]; if (!c) return '';
     if (p.admin) {
       const r = D.adminLoaded(p.id)?.byK[p.k]; if (!r) return '';
-      return `<div class="tip-name">${GA.esc(r.name)}</div><div class="tip-sub">${GA.esc(r.type)}, ${GA.esc(c.name)}${r.pop ? ' · ' + GA.fmtShort(r.pop) + ' people' : ''}</div>`;
+      return `<div class="tip-name">${GA.esc(r.name)}</div><div class="tip-sub">${GA.esc(r.type)}, ${GA.esc(c.name)}${r.pop ? ' · ' + GA.fmtShort(r.pop) + ' people' : ''}</div>${tipTime(GA.time?.zoneAt(p.id, r.lab[0], r.lab[1]))}`;
     }
-    return `<div class="tip-name">${GA.esc(c.name)}</div><div class="tip-sub">${GA.esc(c.capital[0] || c.subregion || c.region)}${c.population ? ' · ' + GA.fmtShort(c.population) + ' people' : ''}</div>`;
+    return `<div class="tip-name">${GA.esc(c.name)}</div><div class="tip-sub">${GA.esc(c.capital[0] || c.subregion || c.region)}${c.population ? ' · ' + GA.fmtShort(c.population) + ' people' : ''}</div>${tipTime(c.tz, c.capital[0])}`;
+  }
+  function tipTime(tz, where) {
+    const t = tz && GA.time?.clock(tz);
+    return t ? `<div class="tip-time">${t} local time${where ? ' in ' + GA.esc(where) : ''}</div>` : '';
   }
 
   function solidTexture(color) {
@@ -159,6 +163,9 @@
       .htmlElement(m => m.el)
       .htmlTransitionDuration(0)
       .htmlElementVisibilityModifier((node, visible) => { node.style.opacity = visible ? '' : '0'; })
+      // measured routes as flight arcs
+      .arcColor(() => [C.accent, C.good]).arcStroke(0.55).arcAltitudeAutoScale(0.35)
+      .arcDashLength(0.4).arcDashGap(0.12).arcDashAnimateTime(2600).arcsTransitionDuration(0)
       .ringLat(r => r.lat).ringLng(r => r.lng).ringColor(() => t => alpha(C.accent, 1 - t))
       .ringMaxRadius(4).ringPropagationSpeed(3).ringRepeatPeriod(900);
 
@@ -306,8 +313,65 @@
 
   function updateReadout() {
     const pov = G.pointOfView(), r = GA.$('#readout');
-    if (r) r.textContent = `View centre ${GA.dms(pov.lat, ((pov.lng + 540) % 360) - 180)} · ${Math.round(pov.altitude * 6371).toLocaleString('en-US')} km up`;
+    if (!r) return;
+    let t = `View centre ${GA.dms(pov.lat, ((pov.lng + 540) % 360) - 180)} · ${Math.round(pov.altitude * 6371).toLocaleString('en-US')} km up`;
+    if (st.sun) t += ` · Sun overhead at ${GA.dms(st.sun[0], st.sun[1])}, ${new Date().toISOString().slice(11, 16)} UTC`;
+    r.textContent = t;
   }
+
+  // ----- day and night -----
+  // Where the Sun is directly overhead right now (NOAA's approximation, good to a fraction of a degree).
+  function subsolar(date = new Date()) {
+    const start = Date.UTC(date.getUTCFullYear(), 0, 0), day = (date - start) / 864e5;
+    const g = 2 * Math.PI / 365 * (day - 1 + (date.getUTCHours() - 12) / 24);
+    const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+    const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    const utcMin = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+    const lng = ((-(utcMin + eqTime - 720) / 4) + 540) % 360 - 180;
+    return [decl * 180 / Math.PI, lng];
+  }
+  // A slightly larger see-through sphere, darkened on the side facing away from the Sun. Built from the
+  // three.js classes globe.gl already uses (it does not expose three.js directly).
+  let night = null, nightTimer = null;
+  function buildNight() {
+    let Mesh, Sphere, Basic;
+    G.scene().traverse(o => {
+      if (o.isMesh && !Mesh) Mesh = o.constructor;
+      if (o.isMesh && o.geometry?.type === 'SphereGeometry' && !Sphere) Sphere = o.geometry.constructor;
+      const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of ms) if (m.type === 'MeshBasicMaterial' && !Basic) Basic = m.constructor;
+    });
+    if (!Mesh || !Sphere || !Basic) return null;
+    const Vec3 = G.camera().position.constructor;
+    const uniforms = { sunDir: { value: new Vec3(1, 0, 0) } };
+    const mat = new Basic({ color: 0x020912, transparent: true, depthWrite: false, opacity: 0.62 });
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.sunDir = uniforms.sunDir;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vN;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvN = normalize((modelMatrix * vec4(position, 0.0)).xyz);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 sunDir;\nvarying vec3 vN;')
+        .replace('#include <dithering_fragment>', '#include <dithering_fragment>\ngl_FragColor.a *= smoothstep(0.07, -0.1, dot(normalize(vN), sunDir));');
+    };
+    const mesh = new Mesh(new Sphere(G.getGlobeRadius() * 1.046, 72, 48), mat);
+    mesh.raycast = () => {}; // never intercept hovers or clicks
+    mesh.renderOrder = 5;
+    return { mesh, uniforms };
+  }
+  function updateSun() {
+    st.sun = subsolar();
+    const p = G.getCoords(st.sun[0], st.sun[1], 0), len = Math.hypot(p.x, p.y, p.z);
+    night.uniforms.sunDir.value.set(p.x / len, p.y / len, p.z / len);
+    updateReadout();
+  }
+  function setDayNight(on) {
+    if (on && !night) night = buildNight();
+    if (on && !night) { GA.toast('Day and night is not available in this browser'); return false; }
+    clearInterval(nightTimer);
+    if (on) { G.scene().add(night.mesh); updateSun(); nightTimer = setInterval(updateSun, 60e3); }
+    else { if (night) G.scene().remove(night.mesh); st.sun = null; updateReadout(); }
+    return true;
+  }
+  function setArcs(list) { G.arcsData(list || []); }
 
   // ----- public controls -----
   function setLens(key) { st.lens = key; repaint(); renderLegend(); }
@@ -422,7 +486,7 @@
   function lensInfo() { return LENSES; }
 
   GA.globe = {
-    init, setNames, setLens, select, selectRegion, flyTo, view, setHighlight, flash, clearFlashes, setForceSplit,
+    init, setNames, setLens, setDayNight, setArcs, countryAt, subsolar, select, selectRegion, flyTo, view, setHighlight, flash, clearFlashes, setForceSplit,
     setMarkers, setGuides, setPlates, setCapitals, setSatellite, setSpin, setTheme, setInteraction, reset, repaint, lensInfo, hasAdmin,
     get state() { return st; }, _G: () => G,
   };

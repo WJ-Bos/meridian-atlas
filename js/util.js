@@ -29,7 +29,8 @@ window.GA = window.GA || {};
   function fmtUsd(n) { return n == null ? '—' : '$' + fmtBig(n); }
   function dms(lat, lng) {
     const f = (v, pos, neg) => {
-      const a = Math.abs(v), d = Math.floor(a), m = Math.round((a - d) * 60);
+      const a = Math.abs(v); let d = Math.floor(a), m = Math.round((a - d) * 60);
+      if (m === 60) { d += 1; m = 0; } // 14.999° is 15°00′, not 14°60′
       return `${d}°${String(m).padStart(2, '0')}′${v >= 0 ? pos : neg}`;
     };
     return `${f(lat, 'N', 'S')}  ${f(lng, 'E', 'W')}`;
