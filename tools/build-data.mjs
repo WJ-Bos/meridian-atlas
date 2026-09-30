@@ -213,6 +213,7 @@ console.log('done:', countries.length, 'countries; overview', count('overview'),
 await import('./build-capitals.mjs');
 // Label points, flag compression, and a version stamp the app uses to invalidate its browser cache.
 await import('./build-labels.mjs');
+await import('./simplify-world.mjs');
 await import('./build-flags.mjs');
 await import('./build-admin1.mjs');
 await writeFile(join(OUT, 'manifest.json'), JSON.stringify({ version: new Date().toISOString() }));

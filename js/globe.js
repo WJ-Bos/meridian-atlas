@@ -18,19 +18,20 @@
   let C, P; // colours from CSS tokens, and the palette for the current theme
 
   // Map palettes per theme. Region tints are softer on the dark ground so the globe doesn't glare.
+  // Side walls must stay opaque: transparent ones make three.js re-check ~1,600 materials every frame.
   const PALETTES = {
     dark: {
       region: { Africa: '#b39068', Americas: '#7f9c6c', Asia: '#b07f8c', Europe: '#7489bd', Oceania: '#5f9d94', Antarctic: '#8c9aa0' },
       ramp: ['#1f3038', '#2b4a52', '#3a6566', '#548274', '#7f9f7d', '#b6b884', '#e9cf86'],
       mastery: { unseen: '#23343b', opened: '#35505a', shaky: '#b8624f', learning: '#c9a14a', known: '#45c095' },
-      nodata: '#2a353a', stroke: 'rgba(6,12,15,0.8)', adminStroke: 'rgba(6,12,15,0.45)', side: 'rgba(0,0,0,0.35)',
+      nodata: '#2a353a', stroke: 'rgba(6,12,15,0.8)', adminStroke: 'rgba(6,12,15,0.45)', side: '#0b1418',
       atmo: '#5f82a6', atmoAlt: 0.15, capital: 'rgba(230,236,234,0.9)',
     },
     light: {
       region: { Africa: '#e3b781', Americas: '#a9c68e', Asia: '#dfa6b3', Europe: '#9fb5e0', Oceania: '#83c3ba', Antarctic: '#eceeea' },
       ramp: ['#f2efd9', '#d7e4b5', '#a7cfa2', '#6fb29f', '#3f8c9a', '#2c5f94', '#22357f'],
       mastery: { unseen: '#e8eae4', opened: '#cbd6d4', shaky: '#e89e8c', learning: '#edc76b', known: '#5fb98d' },
-      nodata: '#d9dcd8', stroke: 'rgba(19,32,39,0.42)', adminStroke: 'rgba(19,32,39,0.28)', side: 'rgba(19,32,39,0.16)',
+      nodata: '#d9dcd8', stroke: 'rgba(19,32,39,0.42)', adminStroke: 'rgba(19,32,39,0.28)', side: '#9fb0b2',
       atmo: '#ffffff', atmoAlt: 0.12, capital: 'rgba(19,32,39,0.85)',
     },
   };
@@ -96,8 +97,7 @@
     if (key === st.regionSel) return 0.042;
     if (id === st.selected || st.flashes[key] || st.flashes[id]) return 0.03;
     if (st.highlight && st.highlight.has(id)) return 0.018;
-    if (key === st.hovered) return 0.016;
-    return 0.006;
+    return 0.006; // hover changes colour only: a new altitude means re-triangulating the whole shape
   }
 
   function tip(f) {
@@ -129,13 +129,13 @@
       .polygonStrokeColor(f => st.satellite ? 'rgba(255,255,255,0.55)' : f.properties.admin ? P.adminStroke : P.stroke)
       .polygonAltitude(altitude)
       .polygonCapCurvatureResolution(3)
-      .polygonsTransitionDuration(220)
+      .polygonsTransitionDuration(0) // animating altitude would rebuild a country's geometry every frame
       .polygonLabel(tip)
       .onPolygonHover(f => setHover(f ? keyOf(f) : null))
       .onPolygonClick((f, ev, coords) => handleClick(f.properties.id, coords, f.properties))
       .onGlobeClick(coords => handleClick(null, coords))
       // small states as dots so they can be clicked at all
-      .pointsData(D.shapeless.concat(D.tiny.filter(c => !D.shapeless.includes(c))))
+      .pointsData(D.shapeless.concat(D.tiny.filter(c => !D.shapeless.includes(c))).map(c => (dotIds.add(c.id), c)))
       .pointLat(c => c.latlng[0]).pointLng(c => c.latlng[1])
       .pointAltitude(c => c.id === st.selected ? 0.03 : 0.008)
       .pointRadius(c => c.id === st.selected || c.id === st.hovered ? 0.5 : 0.32)
@@ -222,6 +222,7 @@
     if (ready.size === st.split.size && [...ready].every(id => st.split.has(id))) return;
     st.split = ready;
     G.polygonsData(D.features.filter(f => !ready.has(f.properties.id)).concat(...[...ready].map(id => D.adminLoaded(id).features)));
+    singlePass();
     st.nameIds = null; updateNames();
   }
 
@@ -281,20 +282,25 @@
   function scheduleNames() { clearTimeout(namesTimer); namesTimer = setTimeout(() => { updateNames(); updateSplit(); }, 120); }
   function setNames(on) { st.names = on; st.nameIds = null; updateNames(); }
 
+  // Hover repaints only what it must: the country shapes, plus the small-country dots only when
+  // one of them is involved (re-applying dot styles rebuilds all their materials).
+  const dotIds = new Set();
   let hoverRaf;
   function setHover(key) {
     if (st.hovered === key) return;
+    const touchesDot = dotIds.has(st.hovered) || dotIds.has(key);
     st.hovered = key; el.style.cursor = key ? 'pointer' : '';
     cancelAnimationFrame(hoverRaf);
-    hoverRaf = requestAnimationFrame(repaint);
+    hoverRaf = requestAnimationFrame(() => (touchesDot ? repaint() : repaintShapes()));
   }
   function handleClick(id, coords, props) {
     if (st.clickHandler) return st.clickHandler(id, coords, props);
     if (props?.admin) GA.app.openRegion(id, props.k);
     else if (id) GA.app.openCountry(id);
   }
+  function repaintShapes() { G.polygonCapColor(capColor).polygonAltitude(altitude); }
   function repaint() {
-    G.polygonCapColor(capColor).polygonAltitude(altitude);
+    repaintShapes();
     G.pointColor(G.pointColor()).pointAltitude(G.pointAltitude()).pointRadius(G.pointRadius());
   }
 
@@ -378,11 +384,19 @@
     const list = on ? D.countries.filter(c => c.sovereign && c.capLatLng).map(c => ({ lat: c.capLatLng[0], lng: c.capLatLng[1], text: c.capital[0], tip: `${c.capital[0]}, capital of ${c.name}` })) : [];
     G.labelsData(list);
   }
+  // three.js renders see-through double-sided surfaces in two passes and flags each material for a
+  // recompile check on every frame. Satellite mode uses see-through country fills, so opt them out.
+  function singlePass() {
+    requestAnimationFrame(() => G.scene().traverse(o => {
+      const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of ms) if (m.side === 2 && !m.forceSinglePass) m.forceSinglePass = true;
+    }));
+  }
   function setSatellite(on) {
     st.satellite = on;
     G.globeImageUrl(on ? 'assets/earth-blue-marble.jpg' : solidTexture(C.sea)).bumpImageUrl(on ? 'assets/earth-topology.png' : null);
     G.showGraticules(!on);
-    repaint();
+    repaint(); singlePass();
   }
   // re-read colours after the light/dark toggle
   function setTheme() {
@@ -410,6 +424,6 @@
   GA.globe = {
     init, setNames, setLens, select, selectRegion, flyTo, view, setHighlight, flash, clearFlashes, setForceSplit,
     setMarkers, setGuides, setPlates, setCapitals, setSatellite, setSpin, setTheme, setInteraction, reset, repaint, lensInfo, hasAdmin,
-    get state() { return st; },
+    get state() { return st; }, _G: () => G,
   };
 })(window.GA);

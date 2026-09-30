@@ -74,7 +74,7 @@
       f.properties.id = c ? c.id : null;
       f.properties.disputedName = c && c.name !== f.properties.name && SHAPE_NAME[f.properties.name] && c.id !== 'UNK' ? f.properties.name : null;
       return f;
-    }).filter(f => f.properties.id);
+    }).filter(f => f.properties.id && f.geometry && f.geometry.coordinates.length);
     const shaped = new Set(D.features.map(f => f.properties.id));
     D.shapeless = countries.filter(c => !shaped.has(c.id) && c.latlng?.length);
     D.tiny = countries.filter(c => c.area != null && c.area < 1200 && c.latlng?.length);
